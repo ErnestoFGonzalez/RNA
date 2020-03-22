@@ -88,7 +88,7 @@ def plot_avalanche_size_hist():
              avalanche_size_freq_array, 'ko', markerfacecolor='grey')
     plt.loglog(s_fit, H_fit, 'k', label=r'$H(s)\sim s^{-\alpha}$')
     plt.text(5,80, r'$\alpha={:.2f}$'.format(abs(reg.coef_[0])))
-    plt.ylabel('Avalanche-size frequency')
+    plt.ylabel('Avalanche-size frequency')git
     plt.xlabel('Avalanche-size')
     plt.legend(fontsize=10)
     plt.show()
