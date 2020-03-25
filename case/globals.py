@@ -1,6 +1,7 @@
 import numpy as np
 
 def bounds(margin = 0):
+    """Geographical coordinates bounds of Ganghes-Brahmaputra basin."""
     return np.array([73.94375 - margin   , 22.55208333 - margin, 97.73958333 + margin , 31.38541667 + margin])
 
 def dates():

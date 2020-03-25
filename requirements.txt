@@ -17,3 +17,5 @@ xlrd >= 1.0.0
 rasterio==1.1.2
 h5py==2.10.0
 descartes==1.1.0
+tables==3.6.1
+geopy==1.21.0

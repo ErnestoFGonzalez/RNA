@@ -13,7 +13,7 @@ class GPM:
 
     def __init__(self,local_filename, bounds = None):
         self.local_filename = local_filename
-        dataset = dataset = h5py.File(local_filename, 'r')
+        dataset = h5py.File(local_filename, 'r')
         precip = dataset['Grid/precipitationCal'][:]
         precip = np.transpose(precip)
         precip = precip.squeeze()
@@ -41,10 +41,10 @@ class GPM:
         self.lonmax_ind = np.where(self.theLons < self.east)[0].max()
         self.latmin_ind = np.where(self.theLats > self.south)[0].max()
         self.latmax_ind = np.where(self.theLats < self.north)[0].min()
-        #print('lonmin: ' + str(self.theLons[lonmin]))
-        #print('lonmax: ' + str(self.theLons[lonmax]))
-        #print('latmin: ' + str(self.theLats[latmin]))
-        #print('latmax: ' + str(self.theLats[latmax]))
+        # print('lonmin: ' + str(self.theLons[self.lonmin_ind]))
+        # print('lonmax: ' + str(self.theLons[self.lonmax_ind]))
+        # print('latmin: ' + str(self.theLats[self.latmin_ind]))
+        # print('latmax: ' + str(self.theLats[self.latmax_ind]))
 
     def get_bounds(self):
         return (self.west,self.south,self.east,self.north)

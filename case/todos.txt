@@ -1,0 +1,11 @@
+- Normalize "Precipitation vs Distance" plots, dividing by ring area or ring radius.
+The bigger the distance the bigger the surface area of the considered ring.
+Normal behavior is to have more precipitation.
+
+- Use Hoshen and Kopelman algorithm to describe precipitation aggregates size
+distribution. Use M(k) to compute how many pairs at distance between d and d+1
+have simultaneous precipitation: if two pairs have simultaneous precipitation
+we register 1, otherwise 0.
+
+- Remove avalanches of size less than 2 from "Avalanche-size frequency vs
+Avalanche-size". Find out line slope.
