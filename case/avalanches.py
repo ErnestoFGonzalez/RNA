@@ -72,7 +72,7 @@ def plot_avalanche_size_hist(logarithmic_binning=True):
 
     if logarithmic_binning:
         bins = np.logspace(0, 2.2, 10)
-        hist = np.histogram([i for i in range(len(avalanche_size_frequency))], bins=bins)
+        hist = np.histogram([i for i in range(len(avalanche_size_frequency)) if i>1], bins=bins)
         log_bin_avalanche_size = []
         log_bin_avalanche_size_freq = [0 for i in range(9)]
         for i in range(len(hist[1])-1):
@@ -80,8 +80,11 @@ def plot_avalanche_size_hist(logarithmic_binning=True):
             for j in range(len(avalanche_size_frequency)):
                 if hist[1][i]<=j<hist[1][i+1]:
                     log_bin_avalanche_size_freq[i] += avalanche_size_frequency[j]
+        recta = np.asarray(log_bin_avalanche_size)**(-1.7)*(10**5.65)
         plt.loglog(log_bin_avalanche_size,
                  log_bin_avalanche_size_freq, 'ko', markerfacecolor='grey')
+        plt.loglog(log_bin_avalanche_size,
+                 recta, '-r', label=r'$\alpha=1.7$')
         plt.ylabel('Avalanche-size frequency')
         plt.xlabel('Avalanche-size')
         plt.legend(fontsize=10)

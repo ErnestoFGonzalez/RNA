@@ -163,6 +163,37 @@ def hoshen_kopelman(rain_grid):
     return M, binary_rain_grid
 
 
+def get_rain_clusters_coords(rain_grid, grid_bounds):
+    M, clustered_rain_grid = hoshen_kopelman(rain_grid)
+    df = pd.DataFrame.from_dict(M, orient='index')
+    df.index.name = 'Cluster'
+    df['Lat_Lon_CM'] = [index_to_coords(ij=ij, grid_bounds=grid_bounds) for ij in df.loc[:, 'CM']]
+    df = df.drop(columns=['CM'])
+
+    return df
+
+
+def plot_rain_clusters_size_distribution(rain_grid, file_name):
+    M, clustered_rain_grid = hoshen_kopelman(rain_grid)
+    df = pd.DataFrame.from_dict(M, orient='index')
+    df.index.name = 'Cluster'
+    size_max = df['size'].max()
+    bins = np.logspace(0, np.log10(size_max+1), 15)
+    size_distribution = np.histogram(df['size'], bins=bins)
+    bins_mean_size = []
+    for i in range(len(size_distribution[1])-1):
+        bin_min = size_distribution[1][i]
+        bin_max = size_distribution[1][i+1]
+        bins_mean_size.append(( bin_max+bin_min ) / 2)
+    plt.plot(bins_mean_size[:-5], size_distribution[0][:-5], 'ko', markerfacecolor='grey')
+    plt.yscale('log')
+    plt.ylabel('Rain clusters frequency')
+    plt.xlabel('Cluster Size')
+    plot_name = 'data_results/rain/{}/'.format(date) + file_name + '-rain-clusters-size-distribution' + '.png'
+    plt.savefig(plot_name)
+    plt.close()
+
+
 def plot_rain_clusters_distribution(rain_grid, grid_bounds, file_name):
     """Plot rain clusters distribution over space"""
     print("\tRain clusters distribution")
@@ -173,7 +204,6 @@ def plot_rain_clusters_distribution(rain_grid, grid_bounds, file_name):
 
     center_of_grid = (len(rain_grid[0])/2,len(rain_grid)/2)
     center_of_grid = index_to_coords(ij=center_of_grid, grid_bounds=grid_bounds)
-    # df['Lat_Lon_CM'] = df['CM'].apply(index_to_coords, args=grid_bounds)
     df['Lat_Lon_CM'] = [index_to_coords(ij=ij, grid_bounds=grid_bounds) for ij in df.loc[:, 'CM']]
     df = df.drop(columns=['CM'])
     df['Dist_To_Center'] = df['Lat_Lon_CM'].apply(distance.distance, args=center_of_grid)
@@ -187,10 +217,9 @@ def plot_rain_clusters_distribution(rain_grid, grid_bounds, file_name):
         bin_max = spatial_distribution[1][i+1]
         bins_mean_distance.append(( bin_max+bin_min ) / 2)
 
-
     plt.plot(bins_mean_distance, spatial_distribution[0], '-ko', markerfacecolor='grey')
     plt.ylabel('Rain cluster frequency')
-    plt.xlabel('Distance to enter of grid (km)')
+    plt.xlabel('Distance to center of grid (km)')
     plot_name = 'data_results/rain/{}/'.format(date) + file_name + '-rain-clusters-distribution' + '.png'
     plt.savefig(plot_name)
     plt.close()
@@ -208,25 +237,12 @@ def index_to_coords(ij, grid_bounds):
     return grid_bounds[3]-0.10*i, grid_bounds[0]+0.10*j
 
 
+
+
 def rain_pair_distribution(rain_grid, grid_bounds, file_name):
     """Plots spatial distribution of rain pairs. A rain pair exists when two
-    random have precipitation."""
+    random points have precipitation."""
     print("\tRain pair distribution")
-
-    # rain_points = []
-    # for i in range(len(rain_grid)):
-    #     for j in range(len(rain_grid[i])):
-    #         if rain_grid[i][j] != 0:
-    #             rain_points.append([i, j])
-    #
-    # rain_pair_dists = []
-    # for point0 in rain_points:
-    #     for point1 in rain_points:
-    #         if point0 != point1:
-    #             latlon0 = index_to_coords(ij=point0, grid_bounds=grid_bounds)
-    #             latlon1 = index_to_coords(ij=point1, grid_bounds=grid_bounds)
-    #             dist = distance.distance(latlon0, latlon1).km
-    #             rain_pair_dists.append(dist)
 
     rain_points = []
     for i in range(len(rain_grid)):
@@ -245,7 +261,7 @@ def rain_pair_distribution(rain_grid, grid_bounds, file_name):
     csv_name = 'data_results/rain/{}/'.format(date) + file_name + '-rain-pair-distances' + '.csv'
     with open(csv_name, 'w', newline='') as outfile:
         writer = csv.writer(outfile, delimiter=',')
-        writer.writerows(rain_pair_dists)
+        writer.writerows(map(lambda row: [row], rain_pair_dists))
 
     spatial_distribution = np.histogram(rain_pair_dists, bins=20)
 
@@ -263,8 +279,41 @@ def rain_pair_distribution(rain_grid, grid_bounds, file_name):
     plt.close()
 
 
+def rain_clusters_pair_distribution(rain_grid, grid_bounds, file_name):
+    """Plots spatial distribution of rain cluster pair."""
+    print("\tRain clusters pair distribution")
+
+    clusters = get_rain_clusters_coords(rain_grid=rain_grid, grid_bounds=grid_bounds)
+
+    rain_clusters_pair_dists = []
+    for latlon0 in clusters['Lat_Lon_CM']:
+        for latlon1 in clusters['Lat_Lon_CM']:
+            if latlon0 != latlon1:
+                dist = distance.distance(latlon0, latlon1).km
+                rain_clusters_pair_dists.append(dist)
+
+    csv_name = 'data_results/rain/{}/'.format(date) + file_name + '-rain-clusters-pair-distances' + '.csv'
+    with open(csv_name, 'w', newline='') as outfile:
+        writer = csv.writer(outfile, delimiter=',')
+        writer.writerows(map(lambda row: [row], rain_clusters_pair_dists))
+
+    spatial_distribution = np.histogram(rain_clusters_pair_dists, bins=20)
+
+    bins_mean_distance = []
+    for i in range(len(spatial_distribution[1])-1):
+        bin_min = spatial_distribution[1][i]
+        bin_max = spatial_distribution[1][i+1]
+        bins_mean_distance.append(( bin_max+bin_min ) / 2)
+
+    plt.loglog(bins_mean_distance, spatial_distribution[0], 'ko', markerfacecolor='grey')
+    plt.ylabel('Rain clusters pair frequency')
+    plt.xlabel('Distance between pair (km)')
+    plot_name = 'data_results/rain/{}/'.format(date) + file_name + '-rain-clusters-pair-distribution-loglog' + '.png'
+    plt.savefig(plot_name)
+    plt.close()
+
+
 if __name__ == '__main__':
-    pass
     if not os.path.exists('data_results/rain'):
         os.makedirs('data_results/rain')
     dates = ['2013-06-16', '2013-06-17']
@@ -282,4 +331,5 @@ if __name__ == '__main__':
 
                 # plot_rain_distribution(rain_grid=rain_grid, grid_bounds=grid_bounds, file_name=file_specs)
                 # plot_rain_clusters_distribution(rain_grid=rain_grid, grid_bounds=grid_bounds, file_name=file_specs)
-                rain_pair_distribution(rain_grid=rain_grid, grid_bounds=grid_bounds, file_name=file_specs)
+                plot_rain_clusters_size_distribution(rain_grid=rain_grid, file_name=file_specs)
+                # rain_pair_distribution(rain_grid=rain_grid, grid_bounds=grid_bounds, file_name=file_specs)
