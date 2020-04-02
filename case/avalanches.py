@@ -117,7 +117,6 @@ def plot_avalanche_size_hist(logarithmic_binning=True):
         plt.show()
 
 
-"""Obter comprimento de correlação das avalanches"""
 def plot_avalanche_occurrence_spatial_series(reach_id, timestep):
     """Plots occurrence of avalanches vs travelled distance by river reaches."""
 
@@ -146,10 +145,8 @@ def plot_avalanche_occurrence_spatial_series(reach_id, timestep):
     plt.show()
 
 
-
-
-
 if __name__ == '__main__':
+    pass
     # build_avalanches_data()
-    plot_avalanche_size_hist()
+    # plot_avalanche_size_hist()
     # plot_avalanche_occurrence_spatial_series()

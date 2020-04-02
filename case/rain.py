@@ -12,6 +12,10 @@ import globals
 
 bounds = globals.bounds(2)
 
+padma = pd.read_pickle('data_gloric/padma_gloric_1m3_final_no_geo.pkl')
+padma = padma.set_index('Reach_ID',drop=True)
+padma = padma[['Next_down', 'Length_km']]
+
 def plot_rain_distribution(rain_grid, grid_bounds, file_name):
     """Plots rain distribution over distance around chosen center, inside
     Ganghes-Brahmaputra river basin.
@@ -174,6 +178,7 @@ def get_rain_clusters_coords(rain_grid, grid_bounds):
 
 
 def plot_rain_clusters_size_distribution(rain_grid, file_name):
+    print("\tRain clusters size distribution")
     M, clustered_rain_grid = hoshen_kopelman(rain_grid)
     df = pd.DataFrame.from_dict(M, orient='index')
     df.index.name = 'Cluster'
@@ -235,8 +240,6 @@ def index_to_coords(ij, grid_bounds):
     # [1][0] --> (lat,lon) = (33.25, 71.95)
     i, j = ij[0], ij[1]
     return grid_bounds[3]-0.10*i, grid_bounds[0]+0.10*j
-
-
 
 
 def rain_pair_distribution(rain_grid, grid_bounds, file_name):
@@ -313,23 +316,119 @@ def rain_clusters_pair_distribution(rain_grid, grid_bounds, file_name):
     plt.close()
 
 
+def rain_pair_distribution_intra_clusters(rain_grid, grid_bounds, file_name):
+    """Plots spatial distribution of rain pairs which belong to same rain cluster.
+    A rain pair exists when two random points have precipitation."""
+    print("\tRain pair distribution intra clusters")
+
+    M, clustered_rain_grid = hoshen_kopelman(rain_grid)
+
+    rain_pair_dists = []
+    for key in M:
+        cluster_rain_points = []
+        for i in range(len(clustered_rain_grid)):
+            for j in range(len(clustered_rain_grid[i])):
+                if clustered_rain_grid[i][j] == key:
+                    latlon = index_to_coords(ij=[i,j], grid_bounds=grid_bounds)
+                    cluster_rain_points.append(latlon)
+
+        for latlon0 in cluster_rain_points:
+            for latlon1 in cluster_rain_points:
+                if latlon0 != latlon1:
+                    dist = distance.distance(latlon0, latlon1).km
+                    rain_pair_dists.append(dist)
+
+    spatial_distribution = np.histogram(rain_pair_dists, bins=20)
+
+    bins_mean_distance = []
+    for i in range(len(spatial_distribution[1])-1):
+        bin_min = spatial_distribution[1][i]
+        bin_max = spatial_distribution[1][i+1]
+        bins_mean_distance.append(( bin_max+bin_min ) / 2)
+
+    plt.plot(bins_mean_distance, spatial_distribution[0], 'ko', markerfacecolor='grey')
+    plt.ylabel('Rain pair frequency')
+    plt.xlabel('Distance between pair (km)')
+    plot_name = 'data_results/rain/{}/'.format(date) + file_name + '-rain-pair-distribution-intra-clusters' + '.png'
+    plt.savefig(plot_name)
+    plt.close()
+
+
+def rain_pair_over_river_path(rain, file_name):
+    """Plots rain pair distribution over river path.
+    Given a rain pair that belongs to the same river path, computes the
+    distance between pair over path trajectory."""
+    print("\tRain pair distribution over river path")
+
+    rain_pair_dists = []
+    for reach_id0 in rain.index:
+        if rain.at[reach_id0, 'rain'] != 0:
+            for reach_id1 in rain.index:
+                if ( rain.at[reach_id1,'rain'] != 0 ) and ( reach_id0 != reach_id1 ):
+                    # go down starting at reach_id0 until finding reach_id1
+                    # or reaching end of river network
+                    next_down = rain.at[reach_id0,'Next_down']
+                    path_lenght = rain.at[reach_id0,'Length_km']
+                    while ( next_down != reach_id1 ) and ( next_down != 0 ): # next_down=0 means we reached end of river network
+                        path_lenght += rain.at[next_down,'Length_km']
+                        next_down = rain.at[next_down,'Next_down']
+
+                    if next_down != reach_id1:
+                        # go down starting at reach_id1 until finding reach_id0
+                        # or reaching end of river network
+                        next_down = rain.at[reach_id1,'Next_down']
+                        path_lenght = rain.at[reach_id1,'Length_km']
+                        while ( next_down != reach_id0 ) and ( next_down != 0 ):
+                            path_lenght += rain.at[next_down,'Length_km']
+                            next_down = rain.at[next_down,'Next_down']
+
+                    # if reach_id0 and reach_id1 belong to same path
+                    # i.e. algorithm found other reach starting from the one
+                    if ( next_down == reach_id0 ) or ( next_down == reach_id1 ):
+                        rain_pair_dists.append(path_lenght)
+
+    spatial_distribution = np.histogram(rain_pair_dists, bins=20)
+
+    bins_mean_distance = []
+    for i in range(len(spatial_distribution[1])-1):
+        bin_min = spatial_distribution[1][i]
+        bin_max = spatial_distribution[1][i+1]
+        bins_mean_distance.append(( bin_max+bin_min ) / 2)
+
+    plt.plot(bins_mean_distance, spatial_distribution[0], 'ko', markerfacecolor='grey')
+    plt.ylabel('Rain pair frequency')
+    plt.xlabel('Travelled Distance between pair (km)')
+    plot_name = 'data_results/rain/{}/'.format(date) + file_name + '-rain-pair-over-river-path' + '.png'
+    plt.savefig(plot_name)
+    plt.close()
+
+
 if __name__ == '__main__':
     if not os.path.exists('data_results/rain'):
         os.makedirs('data_results/rain')
     dates = ['2013-06-16', '2013-06-17']
     filenames = []
     for date in dates:
-        for (dirpath, dirnames, filenames_) in os.walk('data_pmm/raw/{}'.format(date)):
-            if not os.path.exists('data_results/rain/{}'.format(date)):
-                os.makedirs('data_results/rain/{}'.format(date))
+        # for (dirpath, dirnames, filenames_) in os.walk('data_pmm/raw/{}'.format(date)):
+        #     if not os.path.exists('data_results/rain/{}'.format(date)):
+        #         os.makedirs('data_results/rain/{}'.format(date))
+        #     for filename in filenames_:
+        #         file_specs = re.search('3B-HHR.MS.MRG.3IMERG.(.*?).V06B.HDF5', filename).group(1)
+        #         print("Working on {}".format(file_specs))
+        #         gpm_data = helper_functions.GPM('data_pmm/raw/{}/'.format(date)+filename, bounds)
+        #         rain_grid = gpm_data.get_crop()
+        #         grid_bounds = gpm_data.get_bounds()
+        #
+        #         plot_rain_distribution(rain_grid=rain_grid, grid_bounds=grid_bounds, file_name=file_specs)
+        #         plot_rain_clusters_distribution(rain_grid=rain_grid, grid_bounds=grid_bounds, file_name=file_specs)
+        #         plot_rain_clusters_size_distribution(rain_grid=rain_grid, file_name=file_specs)
+        #         rain_pair_distribution(rain_grid=rain_grid, grid_bounds=grid_bounds, file_name=file_specs)
+        #         rain_pair_distribution_intra_clusters(rain_grid=rain_grid, grid_bounds=grid_bounds, file_name=file_specs)
+        for (dirpath, dirnames, filenames_) in os.walk('data_pmm/tif/{}'.format(date)):
             for filename in filenames_:
-                file_specs = re.search('3B-HHR.MS.MRG.3IMERG.(.*?).V06B.HDF5', filename).group(1)
-                print("Working on {}".format(file_specs))
-                gpm_data = helper_functions.GPM('data_pmm/raw/{}/'.format(date)+filename, bounds)
-                rain_grid = gpm_data.get_crop()
-                grid_bounds = gpm_data.get_bounds()
-
-                # plot_rain_distribution(rain_grid=rain_grid, grid_bounds=grid_bounds, file_name=file_specs)
-                # plot_rain_clusters_distribution(rain_grid=rain_grid, grid_bounds=grid_bounds, file_name=file_specs)
-                plot_rain_clusters_size_distribution(rain_grid=rain_grid, file_name=file_specs)
-                # rain_pair_distribution(rain_grid=rain_grid, grid_bounds=grid_bounds, file_name=file_specs)
+                if filename.endswith('-masked-resampled.csv'):
+                    file_specs = re.search('3B-HHR.MS.MRG.3IMERG.(.*?).V06B.HDF5-masked-resampled.csv', filename).group(1)
+                    print("Working on {}".format(file_specs))
+                    rain = pd.read_csv('data_pmm/tif/{}/{}'.format(date,filename)).set_index('Reach_ID',drop=True)
+                    rain = pd.concat([rain, padma], axis=1)
+                    rain_pair_over_river_path(rain=rain, file_name=file_specs)
