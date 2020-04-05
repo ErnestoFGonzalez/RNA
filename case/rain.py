@@ -157,9 +157,9 @@ class RainGrid:
                 for j in range(len(binary_rain_grid[i])):
                     # if point belongs to cluster
                     if binary_rain_grid[i][j] == cluster:
-                        x_CM += i*rain_grid[i][j]
-                        y_CM += j*rain_grid[i][j]
-                        total_M += rain_grid[i][j]
+                        x_CM += i*self.rain_grid[i][j]
+                        y_CM += j*self.rain_grid[i][j]
+                        total_M += self.rain_grid[i][j]
             x_CM = x_CM / total_M
             y_CM = y_CM / total_M
             return x_CM, y_CM
@@ -174,7 +174,7 @@ class RainGrid:
 
 
     def get_rain_clusters_coords(self):
-        M, clustered_rain_grid = self.hoshen_kopelman(self.rain_grid)
+        M, clustered_rain_grid = self.hoshen_kopelman()
         df = pd.DataFrame.from_dict(M, orient='index')
         df.index.name = 'Cluster'
         df['Lat_Lon_CM'] = [index_to_coords(ij=ij, grid_bounds=self.grid_bounds) for ij in df.loc[:, 'CM']]
@@ -186,7 +186,7 @@ class RainGrid:
     def plot_rain_clusters_size_distribution(self):
         """Plots rain clusters size histogram"""
         print("\tRain clusters size distribution")
-        M, clustered_rain_grid = self.hoshen_kopelman(self.rain_grid)
+        M, clustered_rain_grid = self.hoshen_kopelman()
         df = pd.DataFrame.from_dict(M, orient='index')
         df.index.name = 'Cluster'
         size_max = df['size'].max()
@@ -209,7 +209,7 @@ class RainGrid:
     def plot_rain_clusters_distribution(self):
         """Plots rain clusters distribution over space"""
         print("\tRain clusters distribution")
-        M, clustered_rain_grid = self.hoshen_kopelman(selfrain_grid)
+        M, clustered_rain_grid = self.hoshen_kopelman()
 
         df = pd.DataFrame.from_dict(M, orient='index',)
         df.index.name = 'Cluster'
@@ -245,7 +245,7 @@ class RainGrid:
         rain_points = []
         for i in range(len(self.rain_grid)):
             for j in range(len(self.rain_grid[i])):
-                if rain_grid[i][j] != 0:
+                if self.rain_grid[i][j] != 0:
                     latlon = index_to_coords(ij=[i,j], grid_bounds=self.grid_bounds)
                     rain_points.append(latlon)
 
@@ -256,12 +256,11 @@ class RainGrid:
                     dist = distance.distance(latlon0, latlon1).km
                     rain_pair_dists.append(dist)
 
-        csv_name = 'data_results/rain/{}/'.format(self.date) + self.file_name + '-rain-pair-distances' + '.csv'
-        with open(csv_name, 'w', newline='') as outfile:
-            writer = csv.writer(outfile, delimiter=',')
-            writer.writerows(map(lambda row: [row], rain_pair_dists))
-
         spatial_distribution = np.histogram(rain_pair_dists, bins=20)
+
+        # Note: We have counted every rain pair twice, so now we'll halve
+        # the frequency of distances in each bin
+        spatial_distribution[0] = [freq/2 for freq in spatial_distribution[0]]
 
         bins_mean_distance = []
         for i in range(len(spatial_distribution[1])-1):
@@ -296,6 +295,10 @@ class RainGrid:
             writer.writerows(map(lambda row: [row], rain_clusters_pair_dists))
 
         spatial_distribution = np.histogram(rain_clusters_pair_dists, bins=20)
+
+        # Note: We have counted every cluster pair twice, so now we'll halve
+        # the frequency of distances in each bin
+        spatial_distribution[0] = [freq/2 for freq in spatial_distribution[0]]
 
         bins_mean_distance = []
         for i in range(len(spatial_distribution[1])-1):
@@ -334,6 +337,10 @@ class RainGrid:
                         rain_pair_dists.append(dist)
 
         spatial_distribution = np.histogram(rain_pair_dists, bins=20)
+
+        # Note: We have counted every rain pair twice, so now we'll halve
+        # the frequency of distances in each bin
+        spatial_distribution[0] = [freq/2 for freq in spatial_distribution[0]]
 
         bins_mean_distance = []
         for i in range(len(spatial_distribution[1])-1):
@@ -376,26 +383,26 @@ class RainOverRiver:
         print("\tRain pair distribution over river path")
 
         rain_pair_dists = []
-        for reach_id0 in rain.index:
-            if rain.at[reach_id0, 'rain'] != 0:
-                for reach_id1 in rain.index:
-                    if ( rain.at[reach_id1,'rain'] != 0 ) and ( reach_id0 != reach_id1 ):
+        for reach_id0 in self.rain.index:
+            if self.rain.at[reach_id0, 'rain'] != 0:
+                for reach_id1 in self.rain.index:
+                    if ( self.rain.at[reach_id1,'rain'] != 0 ) and ( reach_id0 != reach_id1 ):
                         # go down starting at reach_id0 until finding reach_id1
                         # or reaching end of river network
-                        next_down = rain.at[reach_id0,'Next_down']
-                        path_lenght = rain.at[reach_id0,'Length_km']
+                        next_down = self.rain.at[reach_id0,'Next_down']
+                        path_lenght = self.rain.at[reach_id0,'Length_km']
                         while ( next_down != reach_id1 ) and ( next_down != 0 ): # next_down=0 means we reached end of river network
-                            path_lenght += rain.at[next_down,'Length_km']
-                            next_down = rain.at[next_down,'Next_down']
+                            path_lenght += self.rain.at[next_down,'Length_km']
+                            next_down = self.rain.at[next_down,'Next_down']
 
                         if next_down != reach_id1:
                             # go down starting at reach_id1 until finding reach_id0
                             # or reaching end of river network
-                            next_down = rain.at[reach_id1,'Next_down']
-                            path_lenght = rain.at[reach_id1,'Length_km']
+                            next_down = self.rain.at[reach_id1,'Next_down']
+                            path_lenght = self.rain.at[reach_id1,'Length_km']
                             while ( next_down != reach_id0 ) and ( next_down != 0 ):
-                                path_lenght += rain.at[next_down,'Length_km']
-                                next_down = rain.at[next_down,'Next_down']
+                                path_lenght += self.rain.at[next_down,'Length_km']
+                                next_down = self.rain.at[next_down,'Next_down']
 
                         # if reach_id0 and reach_id1 belong to same path
                         # i.e. algorithm found other reach starting from the one
@@ -403,6 +410,10 @@ class RainOverRiver:
                             rain_pair_dists.append(path_lenght)
 
         spatial_distribution = np.histogram(rain_pair_dists, bins=20)
+
+        # Note: We have counted every rain pair twice, so now we'll halve
+        # the frequency of distances in each bin
+        spatial_distribution[0] = [freq/2 for freq in spatial_distribution[0]]
 
         bins_mean_distance = []
         for i in range(len(spatial_distribution[1])-1):
@@ -427,18 +438,22 @@ if __name__ == '__main__':
         for (dirpath, dirnames, filenames_) in os.walk('data_pmm/raw/{}'.format(date)):
             if not os.path.exists('data_results/rain/{}'.format(date)):
                 os.makedirs('data_results/rain/{}'.format(date))
-            # for filename in filenames_:
-            #     file_specs = re.search('3B-HHR.MS.MRG.3IMERG.(.*?).V06B.HDF5', filename).group(1)
-            #     print("Working on {}".format(file_specs))
-            #     # unfinished
-
-        for (dirpath, dirnames, filenames_) in os.walk('data_pmm/tif/{}'.format(date)):
             for filename in filenames_:
-                if filename.endswith('-masked-resampled.csv'):
-                    file_specs = re.search('3B-HHR.MS.MRG.3IMERG.(.*?).V06B.HDF5-masked-resampled.csv', filename).group(1)
-                    print("Working on {}".format(file_specs))
-                    rain_over_river = RainOverRiver(filename=filename, date=date)
-                    rain_over_river.rain_pair_over_river_path()
+                file_specs = re.search('3B-HHR.MS.MRG.3IMERG.(.*?).V06B.HDF5', filename).group(1)
+                print("Working on {}".format(file_specs))
+                rain_grid = RainGrid(filename=filename, date=date)
+                rain_grid.rain_pair_distribution()
+                rain_grid.rain_clusters_pair_distribution()
+                rain_grid.rain_pair_distribution_intra_clusters()
+
+
+        # for (dirpath, dirnames, filenames_) in os.walk('data_pmm/tif/{}'.format(date)):
+        #     for filename in filenames_:
+        #         if filename.endswith('-masked-resampled.csv'):
+        #             file_specs = re.search('3B-HHR.MS.MRG.3IMERG.(.*?).V06B.HDF5-masked-resampled.csv', filename).group(1)
+        #             print("Working on {}".format(file_specs))
+        #             rain_over_river = RainOverRiver(filename=filename, date=date)
+        #             rain_over_river.rain_pair_over_river_path()
 
             # class methods untested!
             # Proceed to tests

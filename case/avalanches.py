@@ -6,11 +6,12 @@ import os
 import csv
 
 
+overflow = pd.read_pickle('data_results/overflow_130616_130617_2.pkl')
+padma = pd.read_pickle('data_gloric/padma_gloric_1m3_final_no_geo.pkl')
+padma = padma.set_index('Reach_ID',drop=False)
+
+
 def build_avalanches_data():
-    overflow = pd.read_pickle('data_results/overflow_130616_130617_2.pkl')
-    padma = pd.read_pickle('data_gloric/padma_gloric_1m3_final_no_geo.pkl')
-    padma = padma.set_index('Reach_ID',drop=False)
-    padma.head()
 
     all_reaches_ids = overflow.index
 
@@ -53,7 +54,7 @@ def build_avalanches_data():
             print('AvalancheCountError: Miscalculation in timestep {}!\n Avalanche counter found {} overflows, but there are actually {}.\n Please check algorithm for mistakes.'\
             .format(timestep, len(all_counted_overflows), len(all_overflows)))
 
-        avalanches_filename = 'data_results/avalanches/timestep-{}.csv'.format(timestep)
+        avalanches_filename = 'data_results/avalanches/histogram/timestep-{}.csv'.format(timestep)
         with open(avalanches_filename, 'w', newline='') as outfile:
             writer = csv.writer(outfile, delimiter=',')
             writer.writerows(avalanches)
@@ -63,7 +64,7 @@ def plot_avalanche_size_hist(logarithmic_binning=True):
     """Plots Avalanche-size frequency vs Avalanche-size"""
     avalanche_size_frequency = [0 for i in range(200)]
     for timestep in range(97):
-        filename = 'data_results/avalanches/timestep-{}.csv'.format(timestep)
+        filename = 'data_results/avalanches/histogram/timestep-{}.csv'.format(timestep)
         with open(filename, 'r') as infile:
             readlines = csv.reader(infile)
             avalanches = [row for row in readlines if row!=[]]
@@ -117,36 +118,53 @@ def plot_avalanche_size_hist(logarithmic_binning=True):
         plt.show()
 
 
-def plot_avalanche_occurrence_spatial_series(reach_id, timestep):
-    """Plots occurrence of avalanches vs travelled distance by river reaches."""
+def avalanche_spatial_distribution_over_river():
+    """Plots avalanche spatial distribution over river"""
+    print("Avalanche Spatial Distribution Over River Path")
+    avalanche_pairs_distances = []
+    for timestep in range(97):
+        print("\tWorking on timestep", timestep)
+        for reach_id in padma.index:
+            # check if reach has overflow
+            if overflow.loc[reach_id, timestep] != 0:
+                next_down_reach_id = padma.loc[reach_id, 'Next_down']
+                if overflow.loc[next_down_reach_id, timestep] != 0:
+                    while overflow.loc[next_down_reach_id, timestep] != 0:
+                        prior_reach_id = next_down_reach_id
+                        next_down_reach_id = padma.loc[next_down_reach_id, 'Next_down']
+                    # reach from which we will measure the distance to first reach
+                    # of all following avalanches (only downwards)
+                    reference_reach_id = prior_reach_id
+                    travelled_dist = padma.loc[prior_reach_id, 'Length_km']
 
-    overflow = pd.read_pickle('data_results/overflow_130616_130617_2.pkl')
-    padma = pd.read_pickle('data_gloric/padma_gloric_1m3_final_no_geo.pkl')
-    padma = padma.set_index('Reach_ID',drop=False)
-    padma.head()
+                    # until river network reaches end
+                    while next_down_reach_id != 0: # next_down_reach_id = 0 iff there is no next down reach
+                        travelled_dist += padma.loc[next_down_reach_id, 'Length_km']
+                        if padma.loc[next_down_reach_id, 'Next_down'] == 0:
+                            break
+                        is_avalanche = ( overflow.loc[next_down_reach_id, timestep] ) == 0 and ( overflow.loc[padma.loc[next_down_reach_id, 'Next_down'], timestep] )
+                        if is_avalanche and overflow.loc[next_up_reach_id, timestep] == 0: # is avalanche and is not registered yet
+                            avalanche_pairs_distances.append(travelled_dist)
+                        next_up_reach_id = next_down_reach_id
+                        next_down_reach_id = padma.loc[next_down_reach_id, 'Next_down']
 
-    # avalanche_on_travelled_distance = [...,[travelled_dist, 0 if no avalanche/ 1 if avalanche],...]
-    avalanche_on_travelled_distance = []
+        spatial_distribution = np.histogram(avalanche_pairs_distances, bins=20)
 
-    reach_length = padma.loc[reach_id, 'Length_km']
-    next_down_reach_id = padma.loc[reach_id, 'Next_down']
+        bins_mean_distance = []
+        for i in range(len(spatial_distribution[1])-1):
+            bin_min = spatial_distribution[1][i]
+            bin_max = spatial_distribution[1][i+1]
+            bins_mean_distance.append(( bin_max+bin_min ) / 2)
 
-    while next_down_reach_id != 0:
-        if overflow.loc[next_down_reach_id, timestep] != 0:
-            avalanche_on_travelled_distance.append([reach_length, 1])
-        else:
-            avalanche_on_travelled_distance.append([reach_length, 0])
-        reach_length = padma.loc[next_down_reach_id, 'Length_km']
-        next_down_reach_id = padma.loc[next_down_reach_id, 'Next_down']
-
-    plt.plot([row[0] for row in avalanche_on_travelled_distance],
-             [row[1] for row in avalanche_on_travelled_distance], 'bo')
-    plt.ylim((0,1))
-    plt.show()
+        plt.plot(bins_mean_distance, spatial_distribution[0], 'ko', markerfacecolor='grey')
+        plt.ylabel('Avalanche pair frequency')
+        plt.xlabel('Travelled Distance between pair (km)')
+        plot_name = 'data_results/avalanches/avalanche-pair-spatial-distribution-over-river.png'
+        plt.savefig(plot_name)
+        plt.close()
 
 
 if __name__ == '__main__':
-    pass
     # build_avalanches_data()
     # plot_avalanche_size_hist()
-    # plot_avalanche_occurrence_spatial_series()
+    avalanche_spatial_distribution_over_river()
