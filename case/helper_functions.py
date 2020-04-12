@@ -256,3 +256,39 @@ def download_hydrosheds_data(url):
         zip_ref = zipfile.ZipFile(local_filename, 'r')
         zip_ref.extractall(new_directory)
         zip_ref.close()
+
+
+def get_reach_coords():
+    """Get latitude and longitude of center of mass for every reach"""
+    # We have pixels of every reach. Now we are going to get the center of mass pixel
+    # for every reach, and translate this to latitude and longitude
+    import pandas as pd
+    import globals
+
+    areas = pd.read_pickle('data_gloric/areas_gloric_pixel.pkl')['pixels'].to_numpy()
+    avg_pixels = []
+    for row in areas:
+        nr_pixels = len(row)
+        avg_height = 0
+        avg_width = 0
+        for pixel in row:
+            avg_height += pixel[0]
+            avg_width += pixel[1]
+        avg_pixels.append((avg_height/nr_pixels, avg_width/nr_pixels))
+    reaches = pd.read_pickle('data_gloric/areas_gloric_pixel.pkl')[['Reach_ID','pixels']]
+    reaches['Avg_pixel'] = avg_pixels
+    # max_height and max_width in pixels of tif image (use any of the masked tifs)
+    max_height, max_width = rasterio.open('data_pmm/tif/2013-06-16/3B-HHR.MS.MRG.3IMERG'
+        '.20130616-S000000-E002959.0000.V06B.HDF5-masked-resampled.tif').read(1).shape
+
+    def pixel_to_coords(ij, grid_bounds):
+        """Convert pixel to latitude and longitude"""
+        i, j = ij[0], ij[1]
+        return (grid_bounds[1]+i*(grid_bounds[3]-grid_bounds[1])/max_width,
+                grid_bounds[0]+j*(grid_bounds[2]-grid_bounds[0])/max_height)
+
+    bounds = globals.bounds(2)
+    reaches['Lat_Lon'] = [pixel_to_coords(ij=ij, grid_bounds=bounds) for ij in reaches.loc[:, 'Avg_pixel']]
+    reaches = reaches.drop(columns=[ 'Reach_ID', 'pixels', 'Avg_pixel'] )
+
+    return reaches

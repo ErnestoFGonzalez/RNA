@@ -141,7 +141,6 @@ def create_micro_watersheds():
 
 
 def create_micro_watersheds_pixels():
-    # not tested
     import pandas as pd
     print('Create micro watersheds pixels')
     if not os.path.isfile('data_gloric/areas_gloric_pixel.pkl'):
