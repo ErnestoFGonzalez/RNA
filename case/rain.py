@@ -237,7 +237,7 @@ class RainGrid:
         plt.close()
 
 
-    def rain_pair_distribution(self):
+    def radial_distribution(self):
         """Plots spatial distribution of rain pairs. A rain pair exists when two
         random points have precipitation."""
         print("\tRain pair distribution")
@@ -260,7 +260,7 @@ class RainGrid:
 
         # Note: We have counted every rain pair twice, so now we'll halve
         # the frequency of distances in each bin
-        spatial_distribution[0] = [freq/2 for freq in spatial_distribution[0]]
+        spatial_distribution_ = [freq/2 for freq in spatial_distribution[0]]
 
         bins_mean_distance = []
         for i in range(len(spatial_distribution[1])-1):
@@ -268,7 +268,7 @@ class RainGrid:
             bin_max = spatial_distribution[1][i+1]
             bins_mean_distance.append(( bin_max+bin_min ) / 2)
 
-        plt.plot(bins_mean_distance, spatial_distribution[0], 'ko', markerfacecolor='grey')
+        plt.plot(bins_mean_distance, spatial_distribution_, 'ko', markerfacecolor='grey')
         plt.ylabel('Rain pair frequency')
         plt.xlabel('Distance between pair (km)')
         plot_name = 'data_results/rain/{}/'.format(self.date) + self.file_name + '-rain-pair-distribution' + '.png'
@@ -276,7 +276,7 @@ class RainGrid:
         plt.close()
 
 
-    def rain_clusters_pair_distribution(self):
+    def rain_clusters_radial_distribution(self):
         """Plots spatial distribution of rain cluster pair."""
         print("\tRain clusters pair distribution")
 
@@ -298,7 +298,7 @@ class RainGrid:
 
         # Note: We have counted every cluster pair twice, so now we'll halve
         # the frequency of distances in each bin
-        spatial_distribution[0] = [freq/2 for freq in spatial_distribution[0]]
+        spatial_distribution_ = [freq/2 for freq in spatial_distribution[0]]
 
         bins_mean_distance = []
         for i in range(len(spatial_distribution[1])-1):
@@ -306,7 +306,7 @@ class RainGrid:
             bin_max = spatial_distribution[1][i+1]
             bins_mean_distance.append(( bin_max+bin_min ) / 2)
 
-        plt.loglog(bins_mean_distance, spatial_distribution[0], 'ko', markerfacecolor='grey')
+        plt.loglog(bins_mean_distance, spatial_distribution_, 'ko', markerfacecolor='grey')
         plt.ylabel('Rain clusters pair frequency')
         plt.xlabel('Distance between pair (km)')
         plot_name = 'data_results/rain/{}/'.format(self.date) + self.file_name + '-rain-clusters-pair-distribution-loglog' + '.png'
@@ -314,7 +314,7 @@ class RainGrid:
         plt.close()
 
 
-    def rain_pair_distribution_intra_clusters(self):
+    def radial_distribution_intra_clusters(self):
         """Plots spatial distribution of rain pairs which belong to same rain cluster.
         A rain pair exists when two random points have precipitation."""
         print("\tRain pair distribution intra clusters")
@@ -340,7 +340,7 @@ class RainGrid:
 
         # Note: We have counted every rain pair twice, so now we'll halve
         # the frequency of distances in each bin
-        spatial_distribution[0] = [freq/2 for freq in spatial_distribution[0]]
+        spatial_distribution_ = [freq/2 for freq in spatial_distribution[0]]
 
         bins_mean_distance = []
         for i in range(len(spatial_distribution[1])-1):
@@ -348,7 +348,7 @@ class RainGrid:
             bin_max = spatial_distribution[1][i+1]
             bins_mean_distance.append(( bin_max+bin_min ) / 2)
 
-        plt.plot(bins_mean_distance, spatial_distribution[0], 'ko', markerfacecolor='grey')
+        plt.plot(bins_mean_distance, spatial_distribution_, 'ko', markerfacecolor='grey')
         plt.ylabel('Rain pair frequency')
         plt.xlabel('Distance between pair (km)')
         plot_name = 'data_results/rain/{}/'.format(self.date) + self.file_name + '-rain-pair-distribution-intra-clusters' + '.png'
@@ -376,7 +376,7 @@ class RainOverRiver:
         self.file_name = re.search('3B-HHR.MS.MRG.3IMERG.(.*?).V06B.HDF5', filename).group(1)
 
 
-    def rain_pair_over_river_path(self):
+    def rain_radial_distribution_over_river_path(self):
         """Plots rain pair distribution over river path.
         Given a rain pair that belongs to the same river path, computes the
         distance between pair over path trajectory."""
@@ -413,7 +413,7 @@ class RainOverRiver:
 
         # Note: We have counted every rain pair twice, so now we'll halve
         # the frequency of distances in each bin
-        spatial_distribution[0] = [freq/2 for freq in spatial_distribution[0]]
+        spatial_distribution_ = [freq/2 for freq in spatial_distribution[0]]
 
         bins_mean_distance = []
         for i in range(len(spatial_distribution[1])-1):
@@ -421,7 +421,7 @@ class RainOverRiver:
             bin_max = spatial_distribution[1][i+1]
             bins_mean_distance.append(( bin_max+bin_min ) / 2)
 
-        plt.plot(bins_mean_distance, spatial_distribution[0], 'ko', markerfacecolor='grey')
+        plt.plot(bins_mean_distance, spatial_distribution_, 'ko', markerfacecolor='grey')
         plt.ylabel('Rain pair frequency')
         plt.xlabel('Travelled Distance between pair (km)')
         plot_name = 'data_results/rain/{}/'.format(self.date) + self.file_name + '-rain-pair-over-river-path' + '.png'
@@ -435,25 +435,22 @@ if __name__ == '__main__':
     dates = ['2013-06-16', '2013-06-17']
     filenames = []
     for date in dates:
-        for (dirpath, dirnames, filenames_) in os.walk('data_pmm/raw/{}'.format(date)):
-            if not os.path.exists('data_results/rain/{}'.format(date)):
-                os.makedirs('data_results/rain/{}'.format(date))
-            for filename in filenames_:
-                file_specs = re.search('3B-HHR.MS.MRG.3IMERG.(.*?).V06B.HDF5', filename).group(1)
-                print("Working on {}".format(file_specs))
-                rain_grid = RainGrid(filename=filename, date=date)
-                rain_grid.rain_pair_distribution()
-                rain_grid.rain_clusters_pair_distribution()
-                rain_grid.rain_pair_distribution_intra_clusters()
-
-
-        # for (dirpath, dirnames, filenames_) in os.walk('data_pmm/tif/{}'.format(date)):
+        # for (dirpath, dirnames, filenames_) in os.walk('data_pmm/raw/{}'.format(date)):
+        #     if not os.path.exists('data_results/rain/{}'.format(date)):
+        #         os.makedirs('data_results/rain/{}'.format(date))
         #     for filename in filenames_:
-        #         if filename.endswith('-masked-resampled.csv'):
-        #             file_specs = re.search('3B-HHR.MS.MRG.3IMERG.(.*?).V06B.HDF5-masked-resampled.csv', filename).group(1)
-        #             print("Working on {}".format(file_specs))
-        #             rain_over_river = RainOverRiver(filename=filename, date=date)
-        #             rain_over_river.rain_pair_over_river_path()
+        #         file_specs = re.search('3B-HHR.MS.MRG.3IMERG.(.*?).V06B.HDF5', filename).group(1)
+        #         print("Working on {}".format(file_specs))
+        #         rain_grid = RainGrid(filename=filename, date=date)
+        #         rain_grid.radial_distribution()
+                # rain_grid.rain_clusters_radial_distribution()
+                # rain_grid.radial_distribution_intra_clusters()
 
-            # class methods untested!
-            # Proceed to tests
+
+        for (dirpath, dirnames, filenames_) in os.walk('data_pmm/tif/{}'.format(date)):
+            for filename in filenames_:
+                if filename.endswith('-masked-resampled.csv'):
+                    file_specs = re.search('3B-HHR.MS.MRG.3IMERG.(.*?).V06B.HDF5-masked-resampled.csv', filename).group(1)
+                    print("Working on {}".format(file_specs))
+                    rain_over_river = RainOverRiver(filename=filename, date=date)
+                    rain_over_river.rain_radial_distribution_over_river_path()

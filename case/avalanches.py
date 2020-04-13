@@ -54,8 +54,10 @@ def build_avalanches_data():
             print('AvalancheCountError: Miscalculation in timestep {}!\n Avalanche counter found {} overflows, but there are actually {}.\n Please check algorithm for mistakes.'\
             .format(timestep, len(all_counted_overflows), len(all_overflows)))
 
+        avalanches = filter(None, avalanches)
+
         avalanches_filename = 'data_results/avalanches/histogram/timestep-{}.csv'.format(timestep)
-        with open(avalanches_filename, 'w', newline='') as outfile:
+        with open(avalanches_filename, 'w') as outfile:
             writer = csv.writer(outfile, delimiter=',')
             writer.writerows(avalanches)
 
@@ -164,7 +166,29 @@ def avalanche_spatial_distribution_over_river():
         plt.close()
 
 
+def plot_avalanche_under_rain_cluster_distribution():
+    """Given a rain cluster, computes the distance of cluster center of mass to
+    last (most down) reach that is part of an avalanche that starts in a reach
+    under that rain cluster. Plots histogram of this distances."""
+    import rain
+
+    avalanches = pd.read_csv('data_results/avalanches/histogram/timestep-{}.csv'.format(2))
+    rain_grid = rain.RainGrid(filename='data_pmm/raw/2013-06-16/3B-HHR.MS.MRG.3IMERG.'
+        '20130616-S010000-E012959.0060.V06B.HDF5',
+                              date='2013-06-16')
+    M, clustered_rain_grid = rain_grid.hoshen_kopelman()
+
+    # for all rain clusters find avalanches that start under cluster
+    # compute distance of cluster most precipitous point to last avalanche reach
+    for key in M:
+        pass
+
+    # plot distribution of this distances
+
+
+
 if __name__ == '__main__':
     # build_avalanches_data()
     # plot_avalanche_size_hist()
-    avalanche_spatial_distribution_over_river()
+    # avalanche_spatial_distribution_over_river()
+    plot_avalanche_under_rain_cluster_distribution()
