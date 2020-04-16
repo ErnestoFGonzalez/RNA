@@ -259,11 +259,22 @@ def download_hydrosheds_data(url):
 
 
 def get_reach_coords():
-    """Get latitude and longitude of center of mass for every reach"""
+    """Get reach coordinates in both latlon and rain grid indexes
+    Parameters:
+        - None
+    Returns:
+        - reaches: pandas.DataFrame with columns=['Reach_ID', 'Lat_Lon',
+        'Avg_pixel', 'Grid_coords']. 'Lat_Lon' is a (lat,lon) tuple with the
+        latitude and longitude of the geometric center of the reach; 'Avg_pixel'
+        is a (h, w) tuple where h and w are the coordinatesof the geometric
+        center of the reach in TIF image pixels; 'Grid_coords' is a (i,j) tuple
+        where i and j are the rain grid coordinates of the geometric center of the reach """
     # We have pixels of every reach. Now we are going to get the center of mass pixel
     # for every reach, and translate this to latitude and longitude
     import pandas as pd
     import globals
+
+    bounds = globals.bounds(2)
 
     areas = pd.read_pickle('data_gloric/areas_gloric_pixel.pkl')['pixels'].to_numpy()
     avg_pixels = []
@@ -277,18 +288,34 @@ def get_reach_coords():
         avg_pixels.append((avg_height/nr_pixels, avg_width/nr_pixels))
     reaches = pd.read_pickle('data_gloric/areas_gloric_pixel.pkl')[['Reach_ID','pixels']]
     reaches['Avg_pixel'] = avg_pixels
-    # max_height and max_width in pixels of tif image (use any of the masked tifs)
-    max_height, max_width = rasterio.open('data_pmm/tif/2013-06-16/3B-HHR.MS.MRG.3IMERG'
+    # pixels_height and pixels_width in pixels of tif image (use any of the masked tifs)
+    pixels_height, pixels_width = rasterio.open('data_pmm/tif/2013-06-16/3B-HHR.MS.MRG.3IMERG'
         '.20130616-S000000-E002959.0000.V06B.HDF5-masked-resampled.tif').read(1).shape
 
-    def pixel_to_coords(ij, grid_bounds):
+    def pixel_to_coords(ij):
         """Convert pixel to latitude and longitude"""
         i, j = ij[0], ij[1]
-        return (grid_bounds[1]+i*(grid_bounds[3]-grid_bounds[1])/max_width,
-                grid_bounds[0]+j*(grid_bounds[2]-grid_bounds[0])/max_height)
+        return (bounds[1]+i*(bounds[3]-bounds[1])/pixels_width,
+                bounds[0]+j*(bounds[2]-bounds[0])/pixels_height)
 
-    bounds = globals.bounds(2)
-    reaches['Lat_Lon'] = [pixel_to_coords(ij=ij, grid_bounds=bounds) for ij in reaches.loc[:, 'Avg_pixel']]
-    reaches = reaches.drop(columns=[ 'Reach_ID', 'pixels', 'Avg_pixel'] )
+    rain_grid = GPM('data_pmm/raw/2013-06-16/3B-HHR.MS.MRG.3IMERG.'
+        '20130616-S000000-E002959.0000.V06B.HDF5', bounds).get_crop()
+
+    def pixels_to_rain_grid_index(ij):
+        """Converts avalanche pixels form TIF image into rain_grid index.
+        Parameters:
+            - avalanche_pixels: (h, w) tuple where h is the height coordinate
+            and w the width coordinate for the avalanche geometric center in pixels
+            of the TIF image."""
+        i, j = ij
+        # (rg_height,rg_width) is the shape of the rain_grid
+        rg_height, rg_width = len(rain_grid), len(rain_grid[0])
+        avalanche_i = round(i*(rg_height/pixels_height))
+        avalanche_j = round(j*(rg_width/pixels_width))
+        return avalanche_i, avalanche_j
+
+    reaches['Lat_Lon'] = [pixel_to_coords(ij=ij) for ij in reaches.loc[:, 'Avg_pixel']]
+    reaches['Grid_coords'] = [pixels_to_rain_grid_index(ij=ij) for ij in reaches.loc[:, 'Avg_pixel']]
+    reaches = reaches.drop(columns=[ 'Reach_ID', 'pixels'] )
 
     return reaches

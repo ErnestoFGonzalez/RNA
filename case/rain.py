@@ -240,38 +240,48 @@ class RainGrid:
     def radial_distribution(self):
         """Plots spatial distribution of rain pairs. A rain pair exists when two
         random points have precipitation."""
-        print("\tRain pair distribution")
+        print("\tRadial distribution function")
 
-        rain_points = []
+        nodes = [] # array with nodes latitude and longitude coordinates
+        nodes_l = [] # array with node labels: 1 if node has precipitation, 0 if not
         for i in range(len(self.rain_grid)):
             for j in range(len(self.rain_grid[i])):
                 if self.rain_grid[i][j] != 0:
-                    latlon = index_to_coords(ij=[i,j], grid_bounds=self.grid_bounds)
-                    rain_points.append(latlon)
+                    nodes_l.append(1)
+                else:
+                    nodes_l.append(0)
+                latlon = index_to_coords(ij=[i,j], grid_bounds=self.grid_bounds)
+                nodes.append(latlon)
 
-        rain_pair_dists = []
-        for latlon0 in rain_points:
-            for latlon1 in rain_points:
+        rain_pair_dists = [] # distance between all pair of nodes with rain
+        all_pair_dists = [] # distance between all pair of nodes
+        for latlon0 in nodes:
+            for latlon1 in nodes:
                 if latlon0 != latlon1:
                     dist = distance.distance(latlon0, latlon1).km
-                    rain_pair_dists.append(dist)
+                    if nodes_l[nodes.index(latlon0)] == 1 and nodes_l[nodes.index(laton1)] == 1: # rain in both nodes
+                        rain_pair_dists.append(dist)
+                    all_pair_dists.append(dist)
 
-        spatial_distribution = np.histogram(rain_pair_dists, bins=20)
-
-        # Note: We have counted every rain pair twice, so now we'll halve
-        # the frequency of distances in each bin
-        spatial_distribution_ = [freq/2 for freq in spatial_distribution[0]]
+        all_spatial_distribution = np.histogram(all_pair_dists, bins=20) # spatial distribution of all pair of nodes
+        rain_spatial_distribution = np.histogram(all_pair_dists, bins=all_spatial_distribution[1]) # spatial distribution of pair of nodes with rain
 
         bins_mean_distance = []
-        for i in range(len(spatial_distribution[1])-1):
-            bin_min = spatial_distribution[1][i]
-            bin_max = spatial_distribution[1][i+1]
+        for i in range(len(all_spatial_distribution[1])-1):
+            bin_min = all_spatial_distribution[1][i]
+            bin_max = all_spatial_distribution[1][i+1]
             bins_mean_distance.append(( bin_max+bin_min ) / 2)
 
-        plt.plot(bins_mean_distance, spatial_distribution_, 'ko', markerfacecolor='grey')
-        plt.ylabel('Rain pair frequency')
-        plt.xlabel('Distance between pair (km)')
-        plot_name = 'data_results/rain/{}/'.format(self.date) + self.file_name + '-rain-pair-distribution' + '.png'
+        radial_distribution_function = []
+        for i in range(len(all_spatial_distribution[0])):
+            radial_distribution_function.append(
+                rain_spatial_distribution[0][i]/all_spatial_distribution[0][i]
+                )
+
+        plt.plot(bins_mean_distance, radial_distribution_function, 'ko', markerfacecolor='grey')
+        plt.ylabel('Radial Distribution Function')
+        plt.xlabel('Distance (km)')
+        plot_name = 'data_results/rain/{}/'.format(self.date) + self.file_name + '-radial-distribution-function' + '.png'
         plt.savefig(plot_name)
         plt.close()
 
@@ -435,14 +445,14 @@ if __name__ == '__main__':
     dates = ['2013-06-16', '2013-06-17']
     filenames = []
     for date in dates:
-        # for (dirpath, dirnames, filenames_) in os.walk('data_pmm/raw/{}'.format(date)):
-        #     if not os.path.exists('data_results/rain/{}'.format(date)):
-        #         os.makedirs('data_results/rain/{}'.format(date))
-        #     for filename in filenames_:
-        #         file_specs = re.search('3B-HHR.MS.MRG.3IMERG.(.*?).V06B.HDF5', filename).group(1)
-        #         print("Working on {}".format(file_specs))
-        #         rain_grid = RainGrid(filename=filename, date=date)
-        #         rain_grid.radial_distribution()
+        for (dirpath, dirnames, filenames_) in os.walk('data_pmm/raw/{}'.format(date)):
+            if not os.path.exists('data_results/rain/{}'.format(date)):
+                os.makedirs('data_results/rain/{}'.format(date))
+            for filename in filenames_:
+                file_specs = re.search('3B-HHR.MS.MRG.3IMERG.(.*?).V06B.HDF5', filename).group(1)
+                print("Working on {}".format(file_specs))
+                rain_grid = RainGrid(filename=filename, date=date)
+                rain_grid.radial_distribution()
                 # rain_grid.rain_clusters_radial_distribution()
                 # rain_grid.radial_distribution_intra_clusters()
 
