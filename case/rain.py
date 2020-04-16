@@ -73,7 +73,13 @@ class RainGrid:
 
 
     def hoshen_kopelman(self):
-        """Hoshen-Kopelman algorithm for precipitation clusters labeling on rain grid
+        """Hoshen-Kopelman algorithm for precipitation clusters labeling on self.rain_grid
+
+        Returns:
+            - M: dictionary with cluster label and dictionary of cluster size
+            and cluster center of mass latitude and longitude,
+            - labeled_rain_grid: rain grid with labeled nodes (label indicates
+            the cluster to which the node belongs)
         """
         # rain grid with 1 where there is precipitation, 0 if there is not
         binary_rain_grid = [[1 if self.rain_grid[i][j]>0 else 0 for j in range(len(self.rain_grid[i]))]
@@ -170,7 +176,8 @@ class RainGrid:
                 new_val = {"size": M[key], 'CM': get_cluster_center_of_mass(key)}
                 new_M[key] = new_val
         M = new_M
-        return M, binary_rain_grid
+        labeled_rain_grid = binary_rain_grid
+        return M, labeled_rain_grid
 
 
     def get_rain_clusters_coords(self):
@@ -207,7 +214,7 @@ class RainGrid:
 
 
     def plot_rain_clusters_distribution(self):
-        """Plots rain clusters distribution over space"""
+        """Plots rain clusters spatial distribution around grid center"""
         print("\tRain clusters distribution")
         M, clustered_rain_grid = self.hoshen_kopelman()
 
@@ -237,9 +244,10 @@ class RainGrid:
         plt.close()
 
 
-    def radial_distribution(self):
-        """Plots spatial distribution of rain pairs. A rain pair exists when two
-        random points have precipitation."""
+    def rain_radial_distribution(self):
+        """Plots radial distribution function of rain nodes. Radial distribution
+        function gives fraction of pair of nodes with precipitation over total
+        pair of nodes at given distance."""
         print("\tRadial distribution function")
 
         nodes = [] # array with nodes latitude and longitude coordinates
@@ -259,7 +267,7 @@ class RainGrid:
             for latlon1 in nodes:
                 if latlon0 != latlon1:
                     dist = distance.distance(latlon0, latlon1).km
-                    if nodes_l[nodes.index(latlon0)] == 1 and nodes_l[nodes.index(laton1)] == 1: # rain in both nodes
+                    if nodes_l[nodes.index(latlon0)] == 1 and nodes_l[nodes.index(latlon1)] == 1: # rain in both nodes
                         rain_pair_dists.append(dist)
                     all_pair_dists.append(dist)
 
@@ -287,7 +295,7 @@ class RainGrid:
 
 
     def rain_clusters_radial_distribution(self):
-        """Plots spatial distribution of rain cluster pair."""
+        """Plots radial distribution function of rain clusters."""
         print("\tRain clusters pair distribution")
 
         clusters = self.get_rain_clusters_coords()
@@ -452,15 +460,15 @@ if __name__ == '__main__':
                 file_specs = re.search('3B-HHR.MS.MRG.3IMERG.(.*?).V06B.HDF5', filename).group(1)
                 print("Working on {}".format(file_specs))
                 rain_grid = RainGrid(filename=filename, date=date)
-                rain_grid.radial_distribution()
+                rain_grid.rain_radial_distribution()
                 # rain_grid.rain_clusters_radial_distribution()
                 # rain_grid.radial_distribution_intra_clusters()
 
 
-        for (dirpath, dirnames, filenames_) in os.walk('data_pmm/tif/{}'.format(date)):
-            for filename in filenames_:
-                if filename.endswith('-masked-resampled.csv'):
-                    file_specs = re.search('3B-HHR.MS.MRG.3IMERG.(.*?).V06B.HDF5-masked-resampled.csv', filename).group(1)
-                    print("Working on {}".format(file_specs))
-                    rain_over_river = RainOverRiver(filename=filename, date=date)
-                    rain_over_river.rain_radial_distribution_over_river_path()
+        # for (dirpath, dirnames, filenames_) in os.walk('data_pmm/tif/{}'.format(date)):
+        #     for filename in filenames_:
+        #         if filename.endswith('-masked-resampled.csv'):
+        #             file_specs = re.search('3B-HHR.MS.MRG.3IMERG.(.*?).V06B.HDF5-masked-resampled.csv', filename).group(1)
+        #             print("Working on {}".format(file_specs))
+        #             rain_over_river = RainOverRiver(filename=filename, date=date)
+        #             rain_over_river.rain_radial_distribution_over_river_path()
