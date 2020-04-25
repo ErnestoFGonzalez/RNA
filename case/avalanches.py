@@ -198,19 +198,13 @@ def plot_avalanche_radial_distribution():
                                 reaches.loc[reach2, 'Lat_Lon']
                             ).km
                         )
-                distribution.append(distance)
+                distribution.append(distance_between_avalanches)
 
     spatial_distribution = np.histogram(distribution, bins=20)
-
     # Note: We have counted every avalanche pair twice, so now we'll halve
     # the frequency of distances in each bin
     spatial_distribution_ = [freq/2 for freq in spatial_distribution[0]]
-
-    bins_mean_distance = []
-    for i in range(len(spatial_distribution[1])-1):
-        bin_min = spatial_distribution[1][i]
-        bin_max = spatial_distribution[1][i+1]
-        bins_mean_distance.append(( bin_max+bin_min ) / 2)
+    bins_mean_distance = helper_functions.get_histogram_bins_centers(spatial_distribution[1])
 
     plt.plot(bins_mean_distance, spatial_distribution_, 'ko', markerfacecolor='grey')
     plt.ylabel('Avalanche radial distribution')
@@ -221,7 +215,7 @@ def plot_avalanche_radial_distribution():
 
 
 def plot_avalanche_under_rain_cluster_distribution():
-    """Given a rain cluster, computes the distance of cluster center of mass to
+    """For all rain clusters, computes the distance of cluster center of mass to
     last (most down) reach that is part of an avalanche that starts in a reach
     under that rain cluster. Plots histogram of this distances."""
     print("Avalanche under rain cluster distribution")
@@ -236,6 +230,14 @@ def plot_avalanche_under_rain_cluster_distribution():
         for line in readlines:
             temp = line.rstrip().split(',')
             avalanches.append([int(x) for x in temp])
+
+    def get_avalanche_last_reach(avalanche_idx):
+        avalanche = avalanches[avalanche_idx]
+        for reachID in avalanche:
+            if padma.loc[reachID, 'Next_down'] not in avalanche:
+                avalanche_last_reach = reachID
+                break
+        return avalanche_last_reach
 
     rain_grid = rain.RainGrid(filename='3B-HHR.MS.MRG.3IMERG.'
         '20130616-S010000-E012959.0060.V06B.HDF5',
@@ -262,35 +264,21 @@ def plot_avalanche_under_rain_cluster_distribution():
                     # find if these reaches are part of any avalanche
                     for reach_id in reaches_under:
                         for avalanche in avalanches:
-                            for avalanche_reach in avalanche:
-                                if avalanche_reach == reach_id:
-                                    # check which is the last reach in avalanche
-                                    avalanche_last_reach = get_avalanche_last_reach(
-                                        avalanche_idx=avalanches.index(avalanche))
-                                    # get distance from last reach to rain cluster center
-                                    distribution.append(
-                                        distance.distance(
-                                            M.loc[cluster_key,'Lat_Lon_CM'],
-                                            reach_coords.loc[avalanche_last_reach,'Lat_Lon']
-                                        ).km
-                                    )
-
-    def get_avalanche_last_reach(avalanche_idx):
-        avalanche = avalanches[avalanche_idx]
-        for reachID in avalanche:
-            if padma.loc[reachID, 'Next_down'] not in avalanche:
-                avalanche_last_reach = reachID
-                break
-        return avalanche_last_reach
+                            # check which is the last reach in avalanche
+                            avalanche_last_reach = get_avalanche_last_reach(
+                                avalanche_idx=avalanches.index(avalanche)
+                            )
+                            if avalanche_last_reach == reach_id:
+                                distribution.append(
+                                    distance.distance(
+                                        M.loc[cluster_key,'Lat_Lon_CM'],
+                                        reach_coords.loc[avalanche_last_reach,'Lat_Lon']
+                                    ).km
+                                )
 
     # plot distribution of this distances
     spatial_distribution = np.histogram(distribution, bins=20)
-
-    bins_mean_distance = []
-    for i in range(len(spatial_distribution[1])-1):
-        bin_min = spatial_distribution[1][i]
-        bin_max = spatial_distribution[1][i+1]
-        bins_mean_distance.append(( bin_max+bin_min ) / 2)
+    bins_mean_distance = helper_functions.get_histogram_bins_centers(spatial_distribution[1])
 
     plt.plot(bins_mean_distance, spatial_distribution[0], 'ko', markerfacecolor='grey')
     plt.ylabel('Rain Cluster to Avalanche Distribution')
@@ -305,5 +293,5 @@ if __name__ == '__main__':
     # build_avalanches_data()
     # plot_avalanche_size_hist()
     # avalanche_spatial_distribution_over_river()
-    plot_avalanche_under_rain_cluster_distribution()
+    # plot_avalanche_under_rain_cluster_distribution()
     plot_avalanche_radial_distribution()

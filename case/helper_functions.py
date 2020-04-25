@@ -319,3 +319,16 @@ def get_reach_coords():
     reaches = reaches.drop(columns=[ 'Reach_ID', 'pixels'] )
 
     return reaches
+
+
+def get_histogram_bins_centers(bins):
+    """
+    Parameters: bins' limits
+    Returns:    bins' centers
+    """
+    bins_centers = []
+    for i in range(len(bins)-1):
+        bin_min = bins[i]
+        bin_max = bins[i+1]
+        bins_centers.append(( bin_max+bin_min ) / 2)
+    return bins_centers
