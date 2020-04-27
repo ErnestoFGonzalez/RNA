@@ -391,66 +391,48 @@ class RainOverRiver:
         distance between pair over path trajectory."""
         print("\tRain pair distribution over river path")
 
-        try:
-            rain_pair_dists = []
-            for reach_id0 in self.rain.index:
-                if self.rain.at[reach_id0, 'rain'] != 0:
-                    for reach_id1 in self.rain.index:
-                        if ( self.rain.at[reach_id1,'rain'] != 0 ) and ( reach_id0 != reach_id1 ):
-                            # go down starting at reach_id0 until finding reach_id1
+        rain_pair_dists = []
+        for reach_id0 in self.rain.index:
+            if self.rain.at[reach_id0, 'rain'] != 0:
+                for reach_id1 in self.rain.index:
+                    if ( self.rain.at[reach_id1,'rain'] != 0 ) and ( reach_id0 != reach_id1 ):
+                        # go down starting at reach_id0 until finding reach_id1
+                        # or reaching end of river network
+                        next_down = self.rain.at[reach_id0,'Next_down']
+                        path_lenght = self.rain.at[reach_id0,'Length_km']
+                        while ( next_down != reach_id1 ) and ( next_down != 0 ): # next_down=0 means we reached end of river network
+                            path_lenght += self.rain.at[next_down,'Length_km']
+                            next_down = self.rain.at[next_down,'Next_down']
+
+                        if next_down != reach_id1:
+                            # go down starting at reach_id1 until finding reach_id0
                             # or reaching end of river network
-                            next_down = self.rain.at[reach_id0,'Next_down']
-                            path_lenght = self.rain.at[reach_id0,'Length_km']
-                            while ( next_down != reach_id1 ) and ( next_down != 0 ): # next_down=0 means we reached end of river network
+                            next_down = self.rain.at[reach_id1,'Next_down']
+                            path_lenght = self.rain.at[reach_id1,'Length_km']
+                            while ( next_down != reach_id0 ) and ( next_down != 0 ):
                                 path_lenght += self.rain.at[next_down,'Length_km']
                                 next_down = self.rain.at[next_down,'Next_down']
 
-                            if next_down != reach_id1:
-                                # go down starting at reach_id1 until finding reach_id0
-                                # or reaching end of river network
-                                next_down = self.rain.at[reach_id1,'Next_down']
-                                path_lenght = self.rain.at[reach_id1,'Length_km']
-                                while ( next_down != reach_id0 ) and ( next_down != 0 ):
-                                    path_lenght += self.rain.at[next_down,'Length_km']
-                                    next_down = self.rain.at[next_down,'Next_down']
+                        # if reach_id0 and reach_id1 belong to same path
+                        # i.e. algorithm found other reach starting from the one
+                        if ( next_down == reach_id0 ) or ( next_down == reach_id1 ):
+                            rain_pair_dists.append(path_lenght)
 
-                            # if reach_id0 and reach_id1 belong to same path
-                            # i.e. algorithm found other reach starting from the one
-                            if ( next_down == reach_id0 ) or ( next_down == reach_id1 ):
-                                rain_pair_dists.append(path_lenght)
+        spatial_distribution = np.histogram(rain_pair_dists, bins=20)
+        # Note: We have counted every rain pair twice, so now we'll halve
+        # the frequency of distances in each bin
+        spatial_distribution_ = [freq/2 for freq in spatial_distribution[0]]
+        bins_mean_distance = helper_functions.get_histogram_bins_centers(spatial_distribution[1])
 
-            spatial_distribution = np.histogram(rain_pair_dists, bins=20)
-            # Note: We have counted every rain pair twice, so now we'll halve
-            # the frequency of distances in each bin
-            spatial_distribution_ = [freq/2 for freq in spatial_distribution[0]]
-            bins_mean_distance = helper_functions.get_histogram_bins_centers(spatial_distribution[1])
-
-            plt.plot(bins_mean_distance, spatial_distribution_, 'ko', markerfacecolor='grey')
-            plt.ylabel('Rain pair frequency')
-            plt.xlabel('Travelled Distance between pair (km)')
-            plot_name = 'data_results/rain/{}/'.format(self.date) + self.file_name + '-rain-pair-over-river-path' + '.png'
-            plt.savefig(plot_name)
-            plt.close()
-
-
-            client.messages.create(to="+351 935 117 765",
-                                   from_="+18634501727",
-                                   body="Rain Radial Distribution Over river path is done!")
-        except Exception as e:
-            client.messages.create(to="+351 935 117 765",
-                                   from_="+18634501727",
-                                   body=logging.error(traceback.format_exc()))
+        plt.plot(bins_mean_distance, spatial_distribution_, 'ko', markerfacecolor='grey')
+        plt.ylabel('Rain pair frequency')
+        plt.xlabel('Travelled Distance between pair (km)')
+        plot_name = 'data_results/rain/{}/'.format(self.date) + self.file_name + '-rain-pair-over-river-path' + '.png'
+        plt.savefig(plot_name)
+        plt.close()
 
 
 if __name__ == '__main__':
-    from twilio.rest import Client
-    # the following line needs your Twilio Account SID and Auth Token
-    client = Client("ACf42b3b2784d295c3ece6813209df5c05",
-                    "a1329fde308921e32275050d677a4dcc")
-
-    if not os.path.exists('data_results/rain'):
-        os.makedirs('data_results/rain')
-    dates = ['2013-06-16', '2013-06-17']
     filenames = []
     for date in dates:
         # for (dirpath, dirnames, filenames_) in os.walk('data_pmm/raw/{}'.format(date)):
